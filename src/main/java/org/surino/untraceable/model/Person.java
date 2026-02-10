@@ -1,6 +1,5 @@
 package org.surino.untraceable.model;
 
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -20,40 +19,38 @@ public class Person {
     private String name;
     private String surname;
     private String address;
+    private String notes;
 
     public Person() {}
+ 
     public Person(String name, String surname) {
-        this(name, surname, "");
+        this(name, surname, "", null, Status.SCONOSCIUTO); // Imposta notes a null
     }
 
-
 	public Person(String name, String surname, String address) {
-		super();
-		this.name = name;
-		this.surname = surname;
-		this.address = address;
+		this(name, surname, address, null, Status.SCONOSCIUTO); // Imposta notes a null
 	}
-	
-	
-	
 	
 	public Person(String name, String surname, String address, Status status) {
+		this(name, surname, address, null, status); // Imposta notes a null
+	}
+	
+	public Person(String name, String surname, Status status) {
+		this(name, surname, "", null, status); // Imposta address a "" e notes a null
+	}
+	
+	// ********** NUOVO COSTRUTTORE COMPLETO (E UNIFICATO) **********
+	public Person(String name, String surname, String address, String notes, Status status) {
 		super();
 		this.name = name;
 		this.surname = surname;
 		this.address = address;
+		this.notes = notes; // Nuovo campo
 		this.status = status;
 	}
 	
 	
-	
-	
-	public Person(String name, String surname, Status status) {
-		this.name = name;
-		this.surname = surname;
-		this.address = "";
-		this.status = status;
-	}
+
 	/**
 	 * @return the id
 	 */
@@ -109,7 +106,18 @@ public class Person {
 		this.status = status;
 	}
 	
-	
+	/**
+	 * @return the notes
+	 */
+	public String getNotes() {
+		return notes;
+	}
+	/**
+	 * @param notes the notes to set
+	 */
+	public void setNotes(String notes) {
+		this.notes = notes;
+	}
 	
 
 }

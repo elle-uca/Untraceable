@@ -1,4 +1,4 @@
-package org.surino.untraceable.controller;
+package org.surino.untraceable.service;
 
 
 import java.awt.BorderLayout;
@@ -27,6 +27,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.springframework.stereotype.Service;
 import org.surino.untraceable.model.Person;
+import org.surino.untraceable.model.PersonRepository;
 import org.surino.untraceable.model.Status;
 
 @Service
