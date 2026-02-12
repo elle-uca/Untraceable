@@ -12,15 +12,26 @@ import org.surino.untraceable.service.ImportExportService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.ComboBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 
 @Component
 public class PersonView extends BorderPane {
@@ -55,7 +66,8 @@ public class PersonView extends BorderPane {
         surnameField = new TextField();
         addressField = new TextField();
         notesField = new TextField();
-        statusCombo = new ComboBox<>(FXCollections.observableArrayList(Status.values()));
+        statusCombo = new ComboBox<>(
+        		FXCollections.observableArrayList(Status.values()));
         statusCombo.getSelectionModel().selectFirst();
     	
         GridPane.setHgrow(nameField, Priority.ALWAYS);
@@ -119,21 +131,39 @@ public class PersonView extends BorderPane {
         searchField.setPromptText("🔍 Search...");
         searchField.setPadding(new Insets(5));
 
-        setMargin(searchField, new Insets(0, 10, 5, 10));
-        setCenter(searchField);
 
         /* ================= TABLE ================= */
         table = new TableView<>();
         table.setEditable(true);
+        table.setColumnResizePolicy(
+        		TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         TableColumn<Person, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+        nameCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        nameCol.setOnEditCommit(e -> {
+            Person p = e.getRowValue();
+            p.setName(e.getNewValue());
+            personRepository.save(p);
+        });
 
         TableColumn<Person, String> surnameCol = new TableColumn<>("Surname");
         surnameCol.setCellValueFactory(new PropertyValueFactory<>("surname"));
+        surnameCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        surnameCol.setOnEditCommit(e -> {
+            Person p = e.getRowValue();
+            p.setSurname(e.getNewValue());
+            personRepository.save(p);
+        });
 
         TableColumn<Person, String> addressCol = new TableColumn<>("Address");
         addressCol.setCellValueFactory(new PropertyValueFactory<>("address"));
+        addressCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        addressCol.setOnEditCommit(e -> {
+            Person p = e.getRowValue();
+            p.setAddress(e.getNewValue());
+            personRepository.save(p);
+        });
 
         TableColumn<Person, Status> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
@@ -143,18 +173,32 @@ public class PersonView extends BorderPane {
             p.setStatus(e.getNewValue());
             personRepository.save(p);
         });
-
-        table.getColumns().setAll(List.of(nameCol, surnameCol, addressCol, statusCol) );
+        
+        TableColumn<Person, String> notesCol = new TableColumn<>("Notes");
+        notesCol.setCellValueFactory(new PropertyValueFactory<>("notes"));
+        notesCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        notesCol.setOnEditCommit(e -> {
+            Person p = e.getRowValue();
+            p.setNotes(e.getNewValue());
+            personRepository.save(p);
+        });
+        
+        table.getColumns().setAll(List.of(
+        		nameCol, surnameCol, addressCol, statusCol, notesCol) );
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
-
-        setBottom(table);
+         
+        VBox centerBox = new VBox(5, searchField, table);
+        centerBox.setPadding(new Insets(0, 10, 10, 10));
+        VBox.setVgrow(table, Priority.ALWAYS);
+        setCenter(centerBox);
     }
 
     private void loadPeople() {
         masterData = FXCollections.observableArrayList(personRepository.findAll());
         filteredData = new FilteredList<>(masterData, p -> true);
-        table.setItems(filteredData);
-
+        SortedList<Person> sortedData = new SortedList<>(filteredData);
+        sortedData.comparatorProperty().bind(table.comparatorProperty());
+        table.setItems(sortedData);
         searchField.textProperty().addListener((obs, old, val) -> applyFilter(val));
     }
 
@@ -173,9 +217,11 @@ public class PersonView extends BorderPane {
         String surname = surnameField.getText().trim();
         String address = addressField.getText().trim();
         Status status = statusCombo.getValue();
+        String notes = notesField.getText().trim();
 
         if (name.isEmpty() || surname.isEmpty()) {
-            alert(Alert.AlertType.ERROR, "Validation error", "Name and surname are required.");
+            alert(Alert.AlertType.ERROR, "Validation error", 
+            		"Name and surname are required.");
             return;
         }
 
@@ -199,13 +245,13 @@ public class PersonView extends BorderPane {
             }
         }
 
-        personRepository.save(new Person(name, surname, address, status));
+        personRepository.save(new Person(name, surname, address, notes, status));
 
         nameField.clear();
         surnameField.clear();
         addressField.clear();
         statusCombo.getSelectionModel().selectFirst();
-
+        notesField.clear();
         loadPeople();
     }
 
