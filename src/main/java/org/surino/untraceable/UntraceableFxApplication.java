@@ -6,6 +6,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.surino.untraceable.view.PersonView;
 
+import atlantafx.base.theme.PrimerLight;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
@@ -26,13 +27,14 @@ public class UntraceableFxApplication extends Application {
 
     @Override
     public void start(Stage stage) {
+    	Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
     	PersonView root = springContext.getBean(PersonView.class);
 
         Scene scene = new Scene(root, 1000, 700);
         scene.getStylesheets().add(
         	    getClass().getResource("/css/untraceable.css").toExternalForm()
         	);
-        stage.setTitle("UntraceableFX");
+        stage.setTitle("UntraceableFX by Luke");
         stage.setScene(scene);
         stage.show();
     }

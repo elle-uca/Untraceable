@@ -3,6 +3,7 @@ package org.surino.untraceable.view;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.stereotype.Component;
 import org.surino.untraceable.model.Person;
 import org.surino.untraceable.model.PersonRepository;
@@ -22,18 +23,21 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SelectionMode;
+import javafx.scene.control.Separator;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToolBar;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.ComboBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 
 @Component
 public class PersonView extends BorderPane {
@@ -75,12 +79,14 @@ public class PersonView extends BorderPane {
 		GridPane.setHgrow(nameField, Priority.ALWAYS);
 		GridPane.setHgrow(surnameField, Priority.ALWAYS);
 		GridPane.setHgrow(addressField, Priority.ALWAYS);
+		GridPane.setHgrow(statusCombo, Priority.ALWAYS);
 		GridPane.setHgrow(notesField, Priority.ALWAYS);
-
+		
 		nameField.setMaxWidth(Double.MAX_VALUE);
 		surnameField.setMaxWidth(Double.MAX_VALUE);
 		addressField.setMaxWidth(Double.MAX_VALUE);
 		notesField.setMaxWidth(Double.MAX_VALUE);
+		statusCombo.setMaxWidth(Double.MAX_VALUE);
 
 		GridPane form = new GridPane();
 		form.setHgap(10);
@@ -99,10 +105,10 @@ public class PersonView extends BorderPane {
 		form.add(statusCombo, 			1, 2);        
 
 		ColumnConstraints labelCol = new ColumnConstraints();
-		labelCol.setPercentWidth(6);
+		labelCol.setPercentWidth(8);
 
 		ColumnConstraints fieldCol = new ColumnConstraints();
-		fieldCol.setPercentWidth(42);
+		fieldCol.setPercentWidth(41);
 		fieldCol.setHgrow(Priority.ALWAYS);
 
 		form.getColumnConstraints().setAll(
@@ -110,20 +116,71 @@ public class PersonView extends BorderPane {
 				labelCol, fieldCol
 				);
 
-		Button saveBtn   = new Button("💾 Save");
-		Button deleteBtn = new Button("🗑 Delete Selected");
-		Button importBtn = new Button("📥 Import CSV");
-		Button exportBtn = new Button("📤 Export CSV");
+//		Button saveBtn   = new Button("💾 Save");
+//		Button deleteBtn = new Button("🗑 Delete Selected");
+//		Button importBtn = new Button("📥 Import CSV");
+//		Button exportBtn = new Button("📤 Export CSV");
+//
+//		saveBtn.setOnAction(e -> savePerson());
+//		deleteBtn.setOnAction(e -> deletePerson());
+//		importBtn.setOnAction(e -> importCSV());
+//		exportBtn.setOnAction(e -> exportCSV());
+//		
+//		
+//
+//		HBox buttons = new HBox(10, saveBtn, deleteBtn, importBtn, exportBtn);
+//		buttons.setFillHeight(true);
+//
+//		// 🔥 fondamentale
+//		for (Button b : List.of(saveBtn, deleteBtn, importBtn, exportBtn)) {
+//		    b.setMaxWidth(Double.MAX_VALUE);
+//		    HBox.setHgrow(b, Priority.ALWAYS);
+//		}
 
-		saveBtn.setOnAction(e -> savePerson());
-		deleteBtn.setOnAction(e -> deletePerson());
-		importBtn.setOnAction(e -> importCSV());
-		exportBtn.setOnAction(e -> exportCSV());
+		// 🔥 fondamentale perché è dentro un GridPane
+//		GridPane.setHgrow(buttons, Priority.ALWAYS);
+//		buttons.setMaxWidth(Double.MAX_VALUE);
+		
+//		FontIcon saveIcon = new FontIcon("mdi2c-content-save");
+//		saveIcon.setIconSize(26);
+//		saveIcon.setIconColor(Color.RED);
+//		
+//		Button saveBtn = new Button();
+//		//saveBtn.setGraphic(new FontIcon("mdi2c-content-save"));
+//		saveBtn.setGraphic(saveIcon);
+//		saveBtn.setTooltip(new Tooltip("Save"));
+//		saveBtn.setOnAction(e -> savePerson());
+//		
+//
+//
+//		Button deleteBtn = new Button();
+//		deleteBtn.setGraphic(new FontIcon("mdi2d-delete"));
+//		deleteBtn.setTooltip(new Tooltip("Delete selected"));
+//		deleteBtn.setOnAction(e -> deletePerson());
+//
+//		Button importBtn = new Button();
+//		importBtn.setGraphic(new FontIcon("mdi2f-file-import"));
+//		importBtn.setTooltip(new Tooltip("Import CSV"));
+//		importBtn.setOnAction(e -> importCSV());
+//
+//		Button exportBtn = new Button();
+//		exportBtn.setGraphic(new FontIcon("mdi2f-file-export"));
+//		exportBtn.setTooltip(new Tooltip("Export CSV"));
+//		exportBtn.setOnAction(e -> exportCSV());
+//
+//		ToolBar toolBar = new ToolBar(
+//		        saveBtn,
+//		        deleteBtn,
+//		        new Separator(),
+//		        importBtn,
+//		        exportBtn
+//		);
 
-		HBox buttons = new HBox(10, saveBtn, deleteBtn, importBtn, exportBtn);
-		form.add(buttons, 0, 4, 4, 1);
+		setTop(new VBox(createToolbar(), form));
 
-		setTop(form);
+//		form.add(buttons, 0, 4, 4, 1);
+//
+//		setTop(form);
 
 		/* ================= SEARCH ================= */
 		searchField = new TextField();
@@ -218,6 +275,50 @@ public class PersonView extends BorderPane {
 		centerBox.setPadding(new Insets(0, 10, 10, 10));
 		VBox.setVgrow(table, Priority.ALWAYS);
 		setCenter(centerBox);
+	}
+	
+	
+	private ToolBar createToolbar() {
+
+	    Button saveBtn = createIconButton("mdi2c-content-save", "Save");
+	    saveBtn.getStyleClass().add("toolbar-save");
+	    saveBtn.setOnAction(e -> savePerson());
+
+	    Button deleteBtn = createIconButton("mdi2d-delete", "Delete selected");
+	    deleteBtn.getStyleClass().add("toolbar-delete");
+	    deleteBtn.setOnAction(e -> deletePerson());
+
+	    Button importBtn = createIconButton("mdi2f-file-import", "Import CSV");
+	    importBtn.getStyleClass().add("toolbar-neutral");
+	    importBtn.setOnAction(e -> importCSV());
+
+	    Button exportBtn = createIconButton("mdi2f-file-export", "Export CSV");
+	    exportBtn.getStyleClass().add("toolbar-neutral");
+	    exportBtn.setOnAction(e -> exportCSV());
+
+	    ToolBar toolBar = new ToolBar(
+	            saveBtn,
+	            deleteBtn,
+	            new Separator(),
+	            importBtn,
+	            exportBtn
+	    );
+
+	    toolBar.getStyleClass().add("app-toolbar");
+
+	    return toolBar;
+	}
+
+	private Button createIconButton(String iconLiteral, String tooltipText) {
+	    FontIcon icon = new FontIcon(iconLiteral);
+	    icon.setIconSize(18);
+
+	    Button btn = new Button();
+	    btn.setGraphic(icon);
+	    btn.setTooltip(new Tooltip(tooltipText));
+	    btn.getStyleClass().add("toolbar-button");
+
+	    return btn;
 	}
 
 	private void loadPeople() {

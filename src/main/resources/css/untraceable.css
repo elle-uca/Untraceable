@@ -1,86 +1,61 @@
-/* =======================
-   ROOT
-   ======================= */
+/* ===============================
+   TOOLBAR BASE
+   =============================== */
 
-.root {
-    -fx-font-family: "Segoe UI", "Inter", sans-serif;
-    -fx-font-size: 13px;
-    -fx-background-color: #f5f6f8;
+.app-toolbar {
+    -fx-padding: 6 10 6 10;
+    -fx-background-color: -color-bg-default;
 }
 
-/* =======================
-   FORM
-   ======================= */
-
-.label {
-    -fx-text-fill: #333;
-    -fx-font-weight: bold;
+.toolbar-button {
+    -fx-background-color: transparent;
+    -fx-padding: 6;
+    -fx-cursor: hand;
 }
 
-.text-field,
-.combo-box {
+/* icone base */
+.toolbar-button .ikonli-font-icon {
+    -fx-icon-size: 32px;
+    -fx-icon-color: -color-fg-muted;
+}
+
+/* ===============================
+   SAVE (accent)
+   =============================== */
+
+.toolbar-save .ikonli-font-icon {
+    -fx-icon-color: -color-accent-emphasis;
+}
+
+.toolbar-save:hover .ikonli-font-icon {
+    -fx-icon-color: -color-accent-fg;
+}
+
+/* ===============================
+   DELETE (danger)
+   =============================== */
+
+.toolbar-delete .ikonli-font-icon {
+    -fx-icon-color: -color-danger-emphasis;
+}
+
+.toolbar-delete:hover .ikonli-font-icon {
+    -fx-icon-color: -color-danger-fg;
+}
+
+/* ===============================
+   NEUTRAL hover
+   =============================== */
+
+.toolbar-neutral:hover .ikonli-font-icon {
+    -fx-icon-color: -color-accent-emphasis;
+}
+
+/* ===============================
+   Hover background
+   =============================== */
+
+.toolbar-button:hover {
+    -fx-background-color: -color-bg-subtle;
     -fx-background-radius: 6;
-    -fx-border-radius: 6;
-    -fx-border-color: #c9ccd3;
-    -fx-padding: 6 8;
-}
-
-.text-field:focused,
-.combo-box:focused {
-    -fx-border-color: #4a90e2;
-}
-
-/* =======================
-   BUTTONS
-   ======================= */
-
-.button {
-    -fx-background-radius: 6;
-    -fx-padding: 6 14;
-    -fx-font-weight: bold;
-    -fx-background-color: linear-gradient(#ffffff, #e6e9ef);
-    -fx-border-color: #c9ccd3;
-}
-
-.button:hover {
-    -fx-background-color: linear-gradient(#fdfdfd, #dde1e8);
-}
-
-.button:pressed {
-    -fx-background-color: #d0d6e0;
-}
-
-/* =======================
-   TABLE
-   ======================= */
-
-.table-view {
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
-    -fx-border-color: #c9ccd3;
-}
-
-.table-view .column-header-background {
-    -fx-background-color: linear-gradient(#fafafa, #e4e6ec);
-}
-
-.table-view .column-header,
-.table-view .filler {
-    -fx-border-color: #c9ccd3;
-}
-
-.table-row-cell:filled:selected {
-    -fx-background-color: #4a90e2;
-}
-
-.table-row-cell:filled:selected .text {
-    -fx-fill: white;
-}
-
-/* =======================
-   SEARCH FIELD
-   ======================= */
-
-.text-field:prompt-text {
-    -fx-fill: #999;
 }
