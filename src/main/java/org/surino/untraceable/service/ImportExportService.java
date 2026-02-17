@@ -1,7 +1,5 @@
 package org.surino.untraceable.service;
 
-
-import java.awt.BorderLayout;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -15,20 +13,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import javax.swing.JDialog;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JProgressBar;
-import javax.swing.SwingConstants;
-import javax.swing.SwingWorker;
-import javax.swing.filechooser.FileNameExtensionFilter;
-
 import org.springframework.stereotype.Service;
 import org.surino.untraceable.model.Person;
 import org.surino.untraceable.model.PersonRepository;
 import org.surino.untraceable.model.Status;
+
+import javafx.concurrent.Task;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.layout.BorderPane;
+import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
 @Service
 public class ImportExportService {
@@ -39,55 +39,56 @@ public class ImportExportService {
         this.personRepository = personRepository;
     }
 
-    // 🔹 EXPORT
-    public void exportToCSV(JFrame parent) {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Export People");
-        fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
+    // ================= EXPORT =================
 
-        if (fileChooser.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
-            File file = fileChooser.getSelectedFile();
-            if (!file.getName().toLowerCase().endsWith(".csv")) {
-                file = new File(file.getParentFile(), file.getName() + ".csv");
+    public void exportToCSV(Stage parent) {
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export People");
+        fileChooser.getExtensionFilters()
+                .add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+
+        File file = fileChooser.showSaveDialog(parent);
+        if (file == null) return;
+
+        if (!file.getName().toLowerCase().endsWith(".csv")) {
+            file = new File(file.getParentFile(), file.getName() + ".csv");
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+
+            writer.write("Name,Surname,Address,Status\n");
+
+            for (Person p : personRepository.findAll()) {
+                writer.write(String.format("%s,%s,%s,%s\n",
+                        p.getName(),
+                        p.getSurname(),
+                        p.getAddress() == null ? "" : p.getAddress(),
+                        p.getStatus()));
             }
 
-            try (BufferedWriter writer = new BufferedWriter(
-                    new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+            new Alert(Alert.AlertType.INFORMATION,
+                    "Export completed:\n" + file.getAbsolutePath()).showAndWait();
 
-                writer.write("ID;Name;Surname;Address;Status\n");
-                for (Person p : personRepository.findAll()) {
-                    writer.write(String.format("%s,%s,%s,%s\n",
-                            p.getName(),
-                            p.getSurname(),
-                            p.getAddress() == null ? "" : p.getAddress(),
-                            p.getStatus()));
-                }
-
-                JOptionPane.showMessageDialog(parent,
-                        "Export completed:\n" + file.getAbsolutePath(),
-                        "Export CSV",
-                        JOptionPane.INFORMATION_MESSAGE);
-
-            } catch (IOException e) {
-                JOptionPane.showMessageDialog(parent,
-                        "Error during export: " + e.getMessage(),
-                        "Export Error",
-                        JOptionPane.ERROR_MESSAGE);
-            }
+        } catch (IOException e) {
+            new Alert(Alert.AlertType.ERROR,
+                    "Error during export: " + e.getMessage()).showAndWait();
         }
     }
 
-    // 🔹 IMPORT
-    public List<Person> importFromCSV(JFrame parent, String dialogTitle) {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle(dialogTitle);
-        fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
+    // ================= IMPORT =================
 
-        if (fileChooser.showOpenDialog(parent) != JFileChooser.APPROVE_OPTION) {
-            return new ArrayList<>();
-        }
+    public List<Person> importFromCSV(Stage parent, String dialogTitle) {
 
-        File file = fileChooser.getSelectedFile();
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(dialogTitle);
+        fileChooser.getExtensionFilters()
+                .add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+
+        File file = fileChooser.showOpenDialog(parent);
+        if (file == null) return new ArrayList<>();
+
         List<Person> importedPeople = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(
@@ -97,13 +98,16 @@ public class ImportExportService {
             boolean firstLine = true;
 
             while ((line = reader.readLine()) != null) {
+
                 if (firstLine) { firstLine = false; continue; }
+
                 String[] parts = line.split(",", -1);
                 if (parts.length < 4) continue;
 
                 String name = parts[0].trim();
                 String surname = parts[1].trim();
                 String address = parts[2].trim();
+
                 Status status;
                 try {
                     status = Status.valueOf(parts[3].trim());
@@ -115,128 +119,131 @@ public class ImportExportService {
             }
 
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(parent,
-                    "Error reading the CSV:\n" + e.getMessage(),
-                    "Import Error",
-                    JOptionPane.ERROR_MESSAGE);
+            new Alert(Alert.AlertType.ERROR,
+                    "Error reading the CSV:\n" + e.getMessage()).showAndWait();
         }
 
         return importedPeople;
     }
 
-    // 🔹 Import con progress bar e gestione duplicati avanzata
-    public void importWithDuplicatesCheck(JFrame parent, List<Person> importedPeople) {
+    // ================= IMPORT WITH DUPLICATES =================
+
+    public void importWithDuplicatesCheck(Stage parent, List<Person> importedPeople) {
+
         if (importedPeople == null || importedPeople.isEmpty()) {
-            JOptionPane.showMessageDialog(parent, "No valid records found in the CSV.");
+            new Alert(Alert.AlertType.INFORMATION,
+                    "No valid records found in the CSV.").showAndWait();
             return;
         }
 
-        JDialog progressDialog = createProgressDialog(parent, importedPeople.size());
-        JProgressBar progressBar = (JProgressBar) progressDialog.getContentPane().getComponent(1);
+        List<Person> existingPeople = personRepository.findAll();
+        List<Person> toSave = new ArrayList<>();
 
-        SwingWorker<Void, Integer> worker = new SwingWorker<>() {
+        int duplicateMode = -1;
+
+        // 🔹 GESTIONE DUPLICATI SUL THREAD FX
+        for (Person candidate : importedPeople) {
+
+            List<Person> duplicates = existingPeople.stream()
+                    .filter(p -> p.getName().equalsIgnoreCase(candidate.getName())
+                            && p.getSurname().equalsIgnoreCase(candidate.getSurname()))
+                    .toList();
+
+            if (!duplicates.isEmpty()) {
+
+                if (duplicateMode == -1) {
+
+                    int choice = askDuplicate(parent, candidate, duplicates);
+
+                    if (choice == 1) continue;
+                    if (choice == 2) duplicateMode = 0;
+                    if (choice == 3) { duplicateMode = 1; continue; }
+
+                } else if (duplicateMode == 1) {
+                    continue;
+                }
+            }
+
+            toSave.add(candidate);
+        }
+
+        // 🔹 TASK SOLO PER SALVATAGGIO
+        Stage progressStage = createProgressDialog(parent);
+        ProgressBar progressBar =
+                (ProgressBar) progressStage.getScene().lookup("#progressBar");
+
+        Task<Void> task = new Task<>() {
             @Override
-            protected Void doInBackground() {
-                List<Person> existingPeople = personRepository.findAll();
-                int imported = 0;
-                int skipped = 0;
-                int duplicateMode = -1; // -1 = chiedi ogni volta, 0 = importa tutti, 1 = salta tutti
+            protected Void call() {
 
-                for (int i = 0; i < importedPeople.size(); i++) {
-                    Person candidate = importedPeople.get(i);
-
-                    List<Person> duplicates = existingPeople.stream()
-                            .filter(p -> p.getName().equalsIgnoreCase(candidate.getName())
-                                    && p.getSurname().equalsIgnoreCase(candidate.getSurname()))
-                            .collect(Collectors.toList());
-
-                    if (!duplicates.isEmpty()) {
-                        if (duplicateMode == -1) {
-                            Object[] options = {
-                                    "Import anyway", 
-                                    "Skip duplicate", 
-                                    "Apply to all (Import all)", 
-                                    "Apply to all (Skip all)"
-                            };
-
-                            String dupInfo = duplicates.stream()
-                                    .map(p -> "- " + p.getName() + " " + p.getSurname() +
-                                            (p.getAddress() != null && !p.getAddress().isEmpty()
-                                                    ? " (" + p.getAddress() + ")"
-                                                    : ""))
-                                    .collect(Collectors.joining("\n"));
-
-                            int choice = JOptionPane.showOptionDialog(
-                                    parent,
-                                    "Duplicate detected for:\n" +
-                                            candidate.getName() + " " + candidate.getSurname() +
-                                            "\n\nExisting entries:\n" + dupInfo,
-                                    "Duplicate Found",
-                                    JOptionPane.DEFAULT_OPTION,
-                                    JOptionPane.WARNING_MESSAGE,
-                                    null,
-                                    options,
-                                    options[0]
-                            );
-
-                            switch (choice) {
-                                case 0 -> { /* Import only this one */ }
-                                case 1 -> { skipped++; publish(i + 1); continue; }
-                                case 2 -> duplicateMode = 0;
-                                case 3 -> { duplicateMode = 1; skipped++; publish(i + 1); continue; }
-                                default -> { skipped++; publish(i + 1); continue; }
-                            }
-                        } else if (duplicateMode == 1) {
-                            skipped++;
-                            publish(i + 1);
-                            continue;
-                        }
-                    }
-
-                    personRepository.save(candidate);
-                    imported++;
-                    publish(i + 1);
+                for (int i = 0; i < toSave.size(); i++) {
+                    personRepository.save(toSave.get(i));
+                    updateProgress(i + 1, toSave.size());
                 }
 
-                JOptionPane.showMessageDialog(parent,
-                        "Import completed.\nImported: " + imported + "\nSkipped (duplicates): " + skipped,
-                        "Import Result",
-                        JOptionPane.INFORMATION_MESSAGE);
                 return null;
-            }
-
-            @Override
-            protected void process(List<Integer> chunks) {
-                int latest = chunks.get(chunks.size() - 1);
-                progressBar.setValue(latest);
-            }
-
-            @Override
-            protected void done() {
-                progressDialog.dispose();
             }
         };
 
-        worker.execute();
-        progressDialog.setVisible(true);
+        progressBar.progressProperty().bind(task.progressProperty());
+
+        task.setOnSucceeded(e -> {
+            progressStage.close();
+            new Alert(Alert.AlertType.INFORMATION,
+                    "Import completed. Imported: " + toSave.size())
+                    .showAndWait();
+        });
+
+        new Thread(task).start();
+        progressStage.show();
+    }
+    
+    private int askDuplicate(Stage parent, Person candidate, List<Person> duplicates) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.initOwner(parent);
+        alert.setTitle("Duplicate Found");
+        alert.setHeaderText(candidate.getName() + " " + candidate.getSurname());
+
+        String dupInfo = duplicates.stream()
+                .map(p -> "- " + p.getName() + " " + p.getSurname())
+                .collect(Collectors.joining("\n"));
+
+        alert.setContentText("Existing entries:\n" + dupInfo);
+
+        ButtonType importOne = new ButtonType("Import anyway");
+        ButtonType skipOne = new ButtonType("Skip duplicate");
+        ButtonType importAll = new ButtonType("Import all");
+        ButtonType skipAll = new ButtonType("Skip all");
+
+        alert.getButtonTypes().setAll(importOne, skipOne, importAll, skipAll);
+
+        ButtonType result = alert.showAndWait().orElse(skipOne);
+
+        if (result == importOne) return 0;
+        if (result == skipOne) return 1;
+        if (result == importAll) return 2;
+        if (result == skipAll) return 3;
+
+        return 1;
     }
 
-    // 🔹 Utility: crea finestra con progress bar
-    private JDialog createProgressDialog(JFrame parent, int max) {
-        JDialog dialog = new JDialog(parent, "Importing...", true);
-        dialog.setLayout(new BorderLayout(10, 10));
-        dialog.setSize(400, 120);
-        dialog.setLocationRelativeTo(parent);
+    private Stage createProgressDialog(Stage parent) {
+        Stage stage = new Stage();
+        stage.initOwner(parent);
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.setTitle("Importing...");
 
-        JLabel label = new JLabel("Importing people, please wait...");
-        label.setHorizontalAlignment(SwingConstants.CENTER);
+        Label label = new Label("Importing people...");
+        ProgressBar bar = new ProgressBar(0);
+        bar.setId("progressBar");
 
-        JProgressBar progressBar = new JProgressBar(0, max);
-        progressBar.setStringPainted(true);
+        BorderPane root = new BorderPane();
+        root.setPadding(new Insets(20));
+        root.setTop(label);
+        root.setCenter(bar);
 
-        dialog.add(label, BorderLayout.NORTH);
-        dialog.add(progressBar, BorderLayout.CENTER);
+        stage.setScene(new Scene(root, 400, 120));
 
-        return dialog;
+        return stage;
     }
 }

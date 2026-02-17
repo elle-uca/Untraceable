@@ -6,14 +6,14 @@ import java.util.stream.Collectors;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.springframework.stereotype.Component;
 import org.surino.untraceable.model.Person;
-import org.surino.untraceable.model.PersonRepository;
 import org.surino.untraceable.model.Status;
 import org.surino.untraceable.service.ImportExportService;
+import org.surino.untraceable.service.PersonService;
 
+import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
-import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -37,13 +37,14 @@ import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+import javafx.util.Duration;
 
 @Component
 public class PersonView extends BorderPane {
 
-	private final PersonRepository personRepository;
 	private final ImportExportService importExportService;
+	private final PersonService personService;
 
 	private TextField nameField;
 	private TextField surnameField;
@@ -56,13 +57,16 @@ public class PersonView extends BorderPane {
 	private ObservableList<Person> masterData;
 	private FilteredList<Person> filteredData;
 
-	public PersonView(PersonRepository personRepository,
-			ImportExportService importExportService) {
-		this.personRepository = personRepository;
+	public PersonView(
+			ImportExportService importExportService, 
+			PersonService personService) {
+		
 		this.importExportService = importExportService;
+		this.personService = personService;
 
 		initUI();
-		loadPeople();
+		setupSearch();
+		//loadPeople();
 	}
 
 	private void initUI() {
@@ -87,6 +91,12 @@ public class PersonView extends BorderPane {
 		addressField.setMaxWidth(Double.MAX_VALUE);
 		notesField.setMaxWidth(Double.MAX_VALUE);
 		statusCombo.setMaxWidth(Double.MAX_VALUE);
+		
+		/* ================= SEARCH ================= */
+		searchField = new TextField();
+		searchField.setPromptText("🔍 Search...");
+		//searchField.setPadding(new Insets(5));
+
 
 		GridPane form = new GridPane();
 		form.setHgap(10);
@@ -102,7 +112,8 @@ public class PersonView extends BorderPane {
 		form.add(new Label("Note:"), 	2, 1);
 		form.add(notesField, 			3, 1);        
 		form.add(new Label("Status:"), 	0, 2);
-		form.add(statusCombo, 			1, 2);        
+		form.add(statusCombo, 			1, 2);  
+		form.add(searchField, 			0, 4, 4, 1);        
 
 		ColumnConstraints labelCol = new ColumnConstraints();
 		labelCol.setPercentWidth(8);
@@ -115,80 +126,36 @@ public class PersonView extends BorderPane {
 				labelCol, fieldCol,
 				labelCol, fieldCol
 				);
-
-//		Button saveBtn   = new Button("💾 Save");
-//		Button deleteBtn = new Button("🗑 Delete Selected");
-//		Button importBtn = new Button("📥 Import CSV");
-//		Button exportBtn = new Button("📤 Export CSV");
-//
-//		saveBtn.setOnAction(e -> savePerson());
-//		deleteBtn.setOnAction(e -> deletePerson());
-//		importBtn.setOnAction(e -> importCSV());
-//		exportBtn.setOnAction(e -> exportCSV());
-//		
-//		
-//
-//		HBox buttons = new HBox(10, saveBtn, deleteBtn, importBtn, exportBtn);
-//		buttons.setFillHeight(true);
-//
-//		// 🔥 fondamentale
-//		for (Button b : List.of(saveBtn, deleteBtn, importBtn, exportBtn)) {
-//		    b.setMaxWidth(Double.MAX_VALUE);
-//		    HBox.setHgrow(b, Priority.ALWAYS);
-//		}
-
-		// 🔥 fondamentale perché è dentro un GridPane
-//		GridPane.setHgrow(buttons, Priority.ALWAYS);
-//		buttons.setMaxWidth(Double.MAX_VALUE);
-		
-//		FontIcon saveIcon = new FontIcon("mdi2c-content-save");
-//		saveIcon.setIconSize(26);
-//		saveIcon.setIconColor(Color.RED);
-//		
-//		Button saveBtn = new Button();
-//		//saveBtn.setGraphic(new FontIcon("mdi2c-content-save"));
-//		saveBtn.setGraphic(saveIcon);
-//		saveBtn.setTooltip(new Tooltip("Save"));
-//		saveBtn.setOnAction(e -> savePerson());
-//		
-//
-//
-//		Button deleteBtn = new Button();
-//		deleteBtn.setGraphic(new FontIcon("mdi2d-delete"));
-//		deleteBtn.setTooltip(new Tooltip("Delete selected"));
-//		deleteBtn.setOnAction(e -> deletePerson());
-//
-//		Button importBtn = new Button();
-//		importBtn.setGraphic(new FontIcon("mdi2f-file-import"));
-//		importBtn.setTooltip(new Tooltip("Import CSV"));
-//		importBtn.setOnAction(e -> importCSV());
-//
-//		Button exportBtn = new Button();
-//		exportBtn.setGraphic(new FontIcon("mdi2f-file-export"));
-//		exportBtn.setTooltip(new Tooltip("Export CSV"));
-//		exportBtn.setOnAction(e -> exportCSV());
-//
-//		ToolBar toolBar = new ToolBar(
-//		        saveBtn,
-//		        deleteBtn,
-//		        new Separator(),
-//		        importBtn,
-//		        exportBtn
-//		);
-
 		setTop(new VBox(createToolbar(), form));
+		
 
-//		form.add(buttons, 0, 4, 4, 1);
-//
-//		setTop(form);
+		VBox centerBox = new VBox(5, createTable());
+		centerBox.setPadding(new Insets(0, 10, 10, 10));
+		VBox.setVgrow(table, Priority.ALWAYS);
+		setCenter(centerBox);
+	}
+	
+	private void setupSearch() {
+	    PauseTransition pause = new PauseTransition(Duration.millis(300));
+	    searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+	        pause.setOnFinished(e -> {
+	            String text = newVal == null ? "" : newVal.trim();
 
-		/* ================= SEARCH ================= */
-		searchField = new TextField();
-		searchField.setPromptText("🔍 Search...");
-		searchField.setPadding(new Insets(5));
+	            if (text.length() < 3) {
+	            	table.getItems().clear();
+	                return;
+	            }
 
-
-		/* ================= TABLE ================= */
+	            List<Person> results = personService.search(text);
+	            table.setItems(
+	                    FXCollections.observableArrayList(results)
+	            );
+	        });
+	        pause.playFromStart();
+	    });
+	}
+	
+	private TableView<Person> createTable() {
 		table = new TableView<>();
 		table.setEditable(true);
 		table.setColumnResizePolicy(
@@ -200,7 +167,7 @@ public class PersonView extends BorderPane {
 		nameCol.setOnEditCommit(e -> {
 			Person p = e.getRowValue();
 			p.setName(e.getNewValue());
-			personRepository.save(p);
+			personService.save(p);
 		});
 
 		TableColumn<Person, String> surnameCol = new TableColumn<>("Surname");
@@ -209,7 +176,7 @@ public class PersonView extends BorderPane {
 		surnameCol.setOnEditCommit(e -> {
 			Person p = e.getRowValue();
 			p.setSurname(e.getNewValue());
-			personRepository.save(p);
+			personService.save(p);
 		});
 
 		TableColumn<Person, String> addressCol = new TableColumn<>("Address");
@@ -218,7 +185,7 @@ public class PersonView extends BorderPane {
 		addressCol.setOnEditCommit(e -> {
 			Person p = e.getRowValue();
 			p.setAddress(e.getNewValue());
-			personRepository.save(p);
+			personService.save(p);
 		});
 
 		TableColumn<Person, Status> statusCol = new TableColumn<>("Status");
@@ -227,7 +194,7 @@ public class PersonView extends BorderPane {
 		statusCol.setOnEditCommit(e -> {
 			Person p = e.getRowValue();
 			p.setStatus(e.getNewValue());
-			personRepository.save(p);
+			personService.save(p);
 		});
 
 		TableColumn<Person, String> notesCol = new TableColumn<>("Notes");
@@ -236,7 +203,7 @@ public class PersonView extends BorderPane {
 		notesCol.setOnEditCommit(e -> {
 			Person p = e.getRowValue();
 			p.setNotes(e.getNewValue());
-			personRepository.save(p);
+			personService.save(p);
 		});
 
 		table.getColumns().setAll(List.of(
@@ -259,8 +226,7 @@ public class PersonView extends BorderPane {
 				p.setName(p.getSurname());
 				p.setSurname(tmp);
 
-				personRepository.save(p);
-
+				personService.save(p);
 				table.refresh(); // importante!
 			}
 		});
@@ -269,17 +235,11 @@ public class PersonView extends BorderPane {
 
 		// assegna il menu alla tabella
 		table.setContextMenu(contextMenu);
-
-
-		VBox centerBox = new VBox(5, searchField, table);
-		centerBox.setPadding(new Insets(0, 10, 10, 10));
-		VBox.setVgrow(table, Priority.ALWAYS);
-		setCenter(centerBox);
+		return table;
 	}
 	
 	
 	private ToolBar createToolbar() {
-
 	    Button saveBtn = createIconButton("mdi2c-content-save", "Save");
 	    saveBtn.getStyleClass().add("toolbar-save");
 	    saveBtn.setOnAction(e -> savePerson());
@@ -305,7 +265,6 @@ public class PersonView extends BorderPane {
 	    );
 
 	    toolBar.getStyleClass().add("app-toolbar");
-
 	    return toolBar;
 	}
 
@@ -321,24 +280,24 @@ public class PersonView extends BorderPane {
 	    return btn;
 	}
 
-	private void loadPeople() {
-		masterData = FXCollections.observableArrayList(personRepository.findAll());
-		filteredData = new FilteredList<>(masterData, p -> true);
-		SortedList<Person> sortedData = new SortedList<>(filteredData);
-		sortedData.comparatorProperty().bind(table.comparatorProperty());
-		table.setItems(sortedData);
-		searchField.textProperty().addListener((obs, old, val) -> applyFilter(val));
-	}
+//	private void loadPeople() {
+//		masterData = FXCollections.observableArrayList(personService.findAllLimited());
+//		filteredData = new FilteredList<>(masterData, p -> true);
+//		SortedList<Person> sortedData = new SortedList<>(filteredData);
+//		sortedData.comparatorProperty().bind(table.comparatorProperty());
+//		table.setItems(sortedData);
+//		searchField.textProperty().addListener((obs, old, val) -> applyFilter(val));
+//	}
 
-	private void applyFilter(String filter) {
-		String f = filter.toLowerCase();
-		filteredData.setPredicate(p ->
-		f.isEmpty()
-		|| p.getName().toLowerCase().contains(f)
-		|| p.getSurname().toLowerCase().contains(f)
-		|| (p.getAddress() != null && p.getAddress().toLowerCase().contains(f))
-				);
-	}
+//	private void applyFilter(String filter) {
+//		String f = filter.toLowerCase();
+//		filteredData.setPredicate(p ->
+//		f.isEmpty()
+//		|| p.getName().toLowerCase().contains(f)
+//		|| p.getSurname().toLowerCase().contains(f)
+//		|| (p.getAddress() != null && p.getAddress().toLowerCase().contains(f))
+//				);
+//	}
 
 	private void savePerson() {
 		String name = nameField.getText().trim();
@@ -353,7 +312,7 @@ public class PersonView extends BorderPane {
 			return;
 		}
 
-		List<Person> duplicates = personRepository.findAll().stream()
+		List<Person> duplicates = personService.findAllLimited().stream()
 				.filter(p -> p.getName().equalsIgnoreCase(name)
 						&& p.getSurname().equalsIgnoreCase(surname))
 				.collect(Collectors.toList());
@@ -373,41 +332,33 @@ public class PersonView extends BorderPane {
 			}
 		}
 
-		personRepository.save(new Person(name, surname, address, notes, status));
+		personService.save(new Person(name, surname, address, notes, status));
 
 		nameField.clear();
 		surnameField.clear();
 		addressField.clear();
 		statusCombo.getSelectionModel().selectFirst();
 		notesField.clear();
-		loadPeople();
 	}
 
 	private void deletePerson() {
-		Person p = table.getSelectionModel().getSelectedItem();
-		if (p == null) {
-			alert(Alert.AlertType.WARNING, "Delete", "Select a person first.");
-			return;
-		}
-
-		Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-				"Delete " + p.getName() + " " + p.getSurname() + "?",
-				ButtonType.YES, ButtonType.NO);
-
-		if (confirm.showAndWait().orElse(ButtonType.NO) == ButtonType.YES) {
-			personRepository.delete(p);
-			loadPeople();
-		}
+		personService.delete(table.getSelectionModel().getSelectedItem());
+	}
+	
+	private Stage getStage() {
+	    return (Stage) getScene().getWindow();
 	}
 
+	
 	private void importCSV() {
-		List<Person> imported = importExportService.importFromCSV(null, "Import People");
-		importExportService.importWithDuplicatesCheck(null, imported);
-		loadPeople();
+	    List<Person> imported =
+	            importExportService.importFromCSV(getStage(), "Import People");
+	    importExportService.importWithDuplicatesCheck(getStage(), imported);
+	    //loadPeople();
 	}
 
 	private void exportCSV() {
-		importExportService.exportToCSV(null);
+	    importExportService.exportToCSV(getStage());
 	}
 
 	private void alert(Alert.AlertType type, String title, String msg) {
