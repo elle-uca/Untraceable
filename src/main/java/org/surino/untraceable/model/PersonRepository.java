@@ -1,5 +1,7 @@
 package org.surino.untraceable.model;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,4 +20,7 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
             @Param("text") String text,
             Pageable pageable
     );
+    
+    
+    List<Person> findByNameIgnoreCaseAndSurnameIgnoreCase(String name, String surname);
 }       

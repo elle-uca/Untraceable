@@ -19,9 +19,11 @@ public class PersonService {
         this.personRepository = personRepository;
     }
 
+
+    
     // 🔹 CREATE / UPDATE
-    public Person save(Person person) {
-        return personRepository.save(person);
+    public Person  save(Person person) {
+        return  personRepository.save(person);
     }
 
     // 🔹 DELETE
@@ -42,7 +44,6 @@ public class PersonService {
 
     // 🔹 SEARCH
     public List<Person> search(String text) {
-
         if (text == null || text.length() < 3) {
             return List.of();
         }
@@ -52,6 +53,11 @@ public class PersonService {
                 .getContent();
     }
 
+    public List<Person> findDuplicates(String name, String surname) {
+        return personRepository
+                .findByNameIgnoreCaseAndSurnameIgnoreCase(name, surname);
+    }
+    
     // 🔹 Optional: find all (limitato)
     public List<Person> findAllLimited() {
         return personRepository

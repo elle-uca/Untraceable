@@ -12,8 +12,6 @@ import org.surino.untraceable.service.PersonService;
 
 import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -54,8 +52,8 @@ public class PersonView extends BorderPane {
 	private TextField searchField;
 
 	private TableView<Person> table;
-	private ObservableList<Person> masterData;
-	private FilteredList<Person> filteredData;
+//	private ObservableList<Person> masterData;
+//	private FilteredList<Person> filteredData;
 
 	public PersonView(
 			ImportExportService importExportService, 
@@ -232,8 +230,6 @@ public class PersonView extends BorderPane {
 		});
 
 		contextMenu.getItems().addAll(deleteItem, swapItem);
-
-		// assegna il menu alla tabella
 		table.setContextMenu(contextMenu);
 		return table;
 	}
@@ -247,6 +243,10 @@ public class PersonView extends BorderPane {
 	    Button deleteBtn = createIconButton("mdi2d-delete", "Delete selected");
 	    deleteBtn.getStyleClass().add("toolbar-delete");
 	    deleteBtn.setOnAction(e -> deletePerson());
+	    
+	    deleteBtn.disableProperty().bind(
+	    		table.getSelectionModel().selectedItemProperty().isNull()
+	    );
 
 	    Button importBtn = createIconButton("mdi2f-file-import", "Import CSV");
 	    importBtn.getStyleClass().add("toolbar-neutral");
@@ -280,24 +280,6 @@ public class PersonView extends BorderPane {
 	    return btn;
 	}
 
-//	private void loadPeople() {
-//		masterData = FXCollections.observableArrayList(personService.findAllLimited());
-//		filteredData = new FilteredList<>(masterData, p -> true);
-//		SortedList<Person> sortedData = new SortedList<>(filteredData);
-//		sortedData.comparatorProperty().bind(table.comparatorProperty());
-//		table.setItems(sortedData);
-//		searchField.textProperty().addListener((obs, old, val) -> applyFilter(val));
-//	}
-
-//	private void applyFilter(String filter) {
-//		String f = filter.toLowerCase();
-//		filteredData.setPredicate(p ->
-//		f.isEmpty()
-//		|| p.getName().toLowerCase().contains(f)
-//		|| p.getSurname().toLowerCase().contains(f)
-//		|| (p.getAddress() != null && p.getAddress().toLowerCase().contains(f))
-//				);
-//	}
 
 	private void savePerson() {
 		String name = nameField.getText().trim();
@@ -305,21 +287,18 @@ public class PersonView extends BorderPane {
 		String address = addressField.getText().trim();
 		Status status = statusCombo.getValue();
 		String notes = notesField.getText().trim();
-
+		
 		if (name.isEmpty() || surname.isEmpty()) {
 			alert(Alert.AlertType.ERROR, "Validation error", 
 					"Name and surname are required.");
 			return;
 		}
 
-		List<Person> duplicates = personService.findAllLimited().stream()
-				.filter(p -> p.getName().equalsIgnoreCase(name)
-						&& p.getSurname().equalsIgnoreCase(surname))
-				.collect(Collectors.toList());
+		List<Person> duplicates = personService.findDuplicates(name, surname);
 
 		if (!duplicates.isEmpty()) {
 			String msg = duplicates.stream()
-					.map(p -> "- " + p.getName() + " " + p.getSurname())
+					.map(p -> "- " + p.getName() + " " + p.getSurname()+ " " + p.getAddress())
 					.collect(Collectors.joining("\n"));
 
 			Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
@@ -354,7 +333,6 @@ public class PersonView extends BorderPane {
 	    List<Person> imported =
 	            importExportService.importFromCSV(getStage(), "Import People");
 	    importExportService.importWithDuplicatesCheck(getStage(), imported);
-	    //loadPeople();
 	}
 
 	private void exportCSV() {
